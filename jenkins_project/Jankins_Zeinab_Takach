@@ -1,15 +1,61 @@
-stage('Coverage') {
-    steps {
-        script {
-            sh "source ${VIRTUAL_ENV}/bin/activate && coverage run -m pytest"
-            sh "source ${VIRTUAL_ENV}/bin/activate && coverage report"
+pipeline {
+    agent any
+    environment {
+        PYTHONPATH = "${WORKSPACE}:${WORKSPACE}/Users/mariam/University/Fall 24-25/EECE 435L/Lab10/Jenkins_project/app.py" // Replace 'app_directory' with the actual path to your 'app' module
+    }
+    stages {
+        stage('Setup') {
+            steps {
+                sh 'python3 -m venv venv'
+                sh '. venv/bin/activate && pip install --upgrade pip'
+                sh '. venv/bin/activate && pip install -r requirements.txt'
+            }
+        }
+        stage('Lint') {
+            steps {
+                sh '. venv/bin/activate && flake8 app.py'
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    // Activate the virtual environment and run pytest
+                    sh "source ${VIRTUAL_ENV}/bin/activate && pytest"
+                }
+            }
+        }
+        stage('Coverage') {
+            steps {
+                script {
+                    // Activate the virtual environment and run coverage
+                    sh """
+                    source ${VIRTUAL_ENV}/bin/activate
+                    coverage run -m pytest
+                    coverage report
+                    coverage html
+                    """
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    // Define the target deployment directory
+                    def deploymentDir = '/path/to/deployed_app' // Change this to your desired deployment directory
+
+                    // Copy application files to the deployment directory
+                    sh """
+                    mkdir -p ${deploymentDir}
+                    cp -R * ${deploymentDir}/
+                    """
+                    echo "Application deployed to ${deploymentDir}"
+                }
+            }
         }
     }
-}
-stage('Security Scan') {
-    steps {
-        script {
-            sh "source ${VIRTUAL_ENV}/bin/activate && bandit -r ."
+    post {
+        always {
+            cleanWs()
         }
     }
 }
